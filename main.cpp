@@ -3,7 +3,7 @@
 #include <iomanip>
 #include "xml-cpp/parser.hpp"
 
-void event_handler(parser::start_element const &event)
+void event_handler(parser::start_element_t const &event)
 {
   std::cout << "<" << event.name;
   for (auto at : event.attributes)
@@ -13,12 +13,12 @@ void event_handler(parser::start_element const &event)
   std::cout << ">";
 }
 
-void event_handler(parser::end_element const &event)
+void event_handler(parser::end_element_t const &event)
 {
   std::cout << "</" << event.name << ">";
 }
 
-void event_handler(parser::character_data const &event)
+void event_handler(parser::character_data_t const &event)
 {
   std::cout << event.data;
 }
@@ -82,7 +82,7 @@ int main()
 {
   std::stringstream ss(xml);
   parser p(ss, "test.xml");
-  for (auto event = p.next(); event.index() != 5; event = p.next())
+  for (auto event = p.next(); event != parser::eof; event = p.next())
   {
     std::visit([] (auto event) {
       event_handler(event);

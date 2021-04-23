@@ -9,21 +9,11 @@
 
 using coro = boost::coroutines2::coroutine<parser::event_type>;
 
-struct xml_parser_deleter
-{
-  void operator()(XML_Parser p) const
-  {
-    XML_ParserFree(p);
-  }
-};
-
-using unique_xml_parser = std::unique_ptr<XML_ParserStruct, xml_parser_deleter>;
-
 static void start_element_handler(void *user_data, const XML_Char *name, const XML_Char **atts)
 {
   auto &sink = *static_cast<coro::push_type *>(user_data);
 
-  parser::start_element event;
+  parser::start_element_t event;
   event.name = name;
   for (auto iter = atts; iter[0] != nullptr; iter += 2) {
     event.attributes.emplace_back(iter[0], iter[1]);
@@ -36,7 +26,7 @@ static void end_element_handler(void *user_data, const XML_Char *name)
 {
   auto &sink = *static_cast<coro::push_type *>(user_data);
 
-  parser::end_element event { name };
+  parser::end_element_t event {{}, name};
   sink(event);
 }
 
@@ -44,7 +34,7 @@ static void character_data_handler(void *user_data, const XML_Char *s, int len)
 {
   auto &sink = *static_cast<coro::push_type *>(user_data);
 
-  parser::character_data event;
+  parser::character_data_t event;
   event.data = std::string_view(s, len);
   sink(event);
 }
@@ -53,7 +43,7 @@ static void start_namespace_decl_handler(void *user_data, const XML_Char *prefix
 {
   auto &sink = *static_cast<coro::push_type *>(user_data);
 
-  parser::start_namespace_decl event { prefix ? prefix : "", uri };
+  parser::start_namespace_decl_t event {{}, prefix ? prefix : "", uri };
   sink(event);
 }
 
@@ -61,7 +51,7 @@ static void end_namespace_decl_handler(void *user_data, const XML_Char *prefix)
 {
   auto &sink = *static_cast<coro::push_type *>(user_data);
 
-  parser::end_namespace_decl event { prefix ? prefix : "" };
+  parser::end_namespace_decl_t event {{}, prefix ? prefix : "" };
   sink(event);
 }
 
@@ -109,7 +99,7 @@ struct parse_xml {
       break;
     }
 
-    sink(parser::eof { } );
+    sink(parser::eof_t { } );
   }
 };
 
@@ -118,7 +108,7 @@ parser::parser(std::istream &input, std::string name)
       input_name_(std::move(name)),
       src_(parse_xml { input_, input_name_, buffer_, p_ })
 {
-  p_ = XML_ParserCreateNS("utf-8", '#');
+  p_ = XML_ParserCreateNS(XML_ENCODING, XML_NAMESPACE_SEPARATOR);
   if (p_ == nullptr)
     throw std::system_error(ENOMEM, std::system_category());
 }
